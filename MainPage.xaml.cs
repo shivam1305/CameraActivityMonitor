@@ -186,13 +186,18 @@ namespace UWPAPPSampleCallingCameraDLL
                 callback = new MySensorActivitiesReportCallback();
                 HRESULT result = MFCreateSensorActivityMonitor(callback, out activityMonitor);
 
-                int x = Marshal.GetLastWin32Error();
-
                 if (result.Equals(HRESULT.S_OK) && activityMonitor != null)
                 {
                     Console.WriteLine("Sensor activity monitor created successfully!");
 
-                    activityMonitor.Start();
+                    await Task.Run(() =>
+                    {
+                        activityMonitor.Start();
+                    });
+
+                    // activityMonitor.Start();
+
+
                     await Task.Delay(1000000);
                 }
                 else

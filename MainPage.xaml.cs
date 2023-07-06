@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Windows.UI.Xaml.Controls;
 
 namespace UWPAPPSampleCallingCameraDLL
@@ -9,6 +11,9 @@ namespace UWPAPPSampleCallingCameraDLL
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        [DllImport("Mfplat.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern int MFStartup(uint Version, int dwFlags);
+
         // Import the MFCreateSensorActivityMonitor function using P/Invoke
         [DllImport("mfsensorgroup.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         private static extern HRESULT MFCreateSensorActivityMonitor(
@@ -19,45 +24,6 @@ namespace UWPAPPSampleCallingCameraDLL
         public MainPage()
         {
             this.InitializeComponent();
-
-            IMFSensorActivitiesReportCallback callback = null;
-            IMFSensorActivityMonitor activityMonitor = null;
-
-            try
-            {
-                // Create an instance of your IMFSensorActivitiesReportCallback implementation
-                callback = new MySensorActivitiesReportCallback();
-
-                HRESULT result = MFCreateSensorActivityMonitor(callback, out activityMonitor);
-
-                int x = Marshal.GetLastWin32Error();
-
-                if (result.Equals(HRESULT.S_OK) && activityMonitor != null)
-                {
-                    Console.WriteLine("Sensor activity monitor created successfully!");
-
-                    // You can perform additional operations with the activity monitor here
-
-                    // Remember to release the activity monitor when you're done
-                    Marshal.ReleaseComObject(activityMonitor);
-                }
-                else
-                {
-                    Console.WriteLine("Failed to create sensor activity monitor!");
-                }
-            }
-            catch (COMException ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-            }
-            finally
-            {
-                // Release the callback object if it was created
-                if (callback != null)
-                {
-                    Marshal.ReleaseComObject(callback);
-                }
-            }
         }
 
         // Define the IMFSensorActivityMonitor interface
@@ -67,8 +33,8 @@ namespace UWPAPPSampleCallingCameraDLL
         private interface IMFSensorActivityMonitor
         {
             // Define the methods of IMFSensorActivityMonitor here
-            int Start();
-            int Stop();
+            HRESULT Start();
+            HRESULT Stop();
         }
 
         // Implement your own IMFSensorActivitiesReportCallback class
@@ -77,9 +43,34 @@ namespace UWPAPPSampleCallingCameraDLL
         {
             public HRESULT OnActivitiesReport(IMFSensorActivitiesReport sensorActivitiesReport)
             {
-                // Implement the callback method to handle the sensor activities report
-                // ...
+                uint totalReportCount = 0;
 
+                // Early exit if we did not have any reports
+                sensorActivitiesReport.GetCount(out totalReportCount);
+                if (totalReportCount == 0)
+                {
+                    Console.WriteLine("\nNo reports\n");
+                    return HRESULT.S_OK;
+                }
+
+                Console.WriteLine("\n\nPrinting all reports[totalcount=%lu] \n", totalReportCount);
+
+                for (uint idx = 0; idx < totalReportCount; idx++)
+                {
+                    uint count = 0;
+                    IMFSensorActivityReport activityReport;
+                    sensorActivitiesReport.GetActivityReport(idx, out activityReport);
+                    activityReport.GetProcessCount(out count);
+
+                    Console.WriteLine("\n\t [processcount=%lu] \n", count);
+                    for (uint i = 0; i < count; i++)
+                    {
+                        IMFSensorProcessActivity processActivity;
+                        activityReport.GetProcessActivity(i, out processActivity);
+                        bool isInUse;
+                        processActivity.GetStreamingState(out isInUse);
+                    }
+                }
                 return HRESULT.S_OK;
             }
         }
@@ -157,6 +148,74 @@ namespace UWPAPPSampleCallingCameraDLL
             public int Value;
 
             public static readonly HRESULT S_OK = new HRESULT { Value = 0 };
+        }
+
+        private async void Button_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            try
+            {
+                // Call MFStartup to initialize Media Foundation
+                int result = MFStartup(0x20070, 0); // Pass the appropriate version and flags
+
+                if (result == 0)
+                {
+                    Console.WriteLine("Media Foundation initialized successfully!");
+
+                    // Perform operations with Media Foundation here
+
+                    // Call MFShutdown to clean up Media Foundation
+                    // MFShutdown();
+                }
+                else
+                {
+                    Console.WriteLine("Failed to initialize Media Foundation!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+
+
+            IMFSensorActivitiesReportCallback callback = null;
+            IMFSensorActivityMonitor activityMonitor = null;
+
+            try
+            {
+                // Create an instance of your IMFSensorActivitiesReportCallback implementation
+                callback = new MySensorActivitiesReportCallback();
+                HRESULT result = MFCreateSensorActivityMonitor(callback, out activityMonitor);
+
+                int x = Marshal.GetLastWin32Error();
+
+                if (result.Equals(HRESULT.S_OK) && activityMonitor != null)
+                {
+                    Console.WriteLine("Sensor activity monitor created successfully!");
+
+                    activityMonitor.Start();
+                    await Task.Delay(1000000);
+                }
+                else
+                {
+                    Console.WriteLine("Failed to create sensor activity monitor!");
+                }
+            }
+            catch (COMException ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+            finally
+            {
+                // Release the callback object if it was created
+                if (callback != null)
+                {
+                    Marshal.ReleaseComObject(callback);
+                }
+                if (activityMonitor != null)
+                {
+                    Marshal.ReleaseComObject(activityMonitor);
+                }
+            }
         }
     }
 }

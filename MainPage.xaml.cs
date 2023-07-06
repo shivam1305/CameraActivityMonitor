@@ -11,14 +11,13 @@ namespace UWPAPPSampleCallingCameraDLL
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        [DllImport("Mfplat.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        [DllImport("Mfplat.dll", SetLastError = true, CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
         private static extern int MFStartup(uint Version, int dwFlags);
 
-        // Import the MFCreateSensorActivityMonitor function using P/Invoke
-        [DllImport("mfsensorgroup.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        [DllImport("mfsensorgroup.dll", SetLastError = true, CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
         private static extern HRESULT MFCreateSensorActivityMonitor(
-            IMFSensorActivitiesReportCallback pCallback,
-            out IMFSensorActivityMonitor ppActivityMonitor
+            [In] IMFSensorActivitiesReportCallback pCallback,
+            [MarshalAs(UnmanagedType.Interface), Out] out IMFSensorActivityMonitor ppActivityMonitor
         );
 
         public MainPage()
@@ -30,10 +29,13 @@ namespace UWPAPPSampleCallingCameraDLL
         [ComImport]
         [Guid("D0CEF145-B3F4-4340-A2E5-7A5080CA05CB")]
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [ComVisible(true)]
         private interface IMFSensorActivityMonitor
         {
             // Define the methods of IMFSensorActivityMonitor here
+            [MethodImpl(MethodImplOptions.InternalCall)]
             HRESULT Start();
+            [MethodImpl(MethodImplOptions.InternalCall)]
             HRESULT Stop();
         }
 
@@ -79,6 +81,7 @@ namespace UWPAPPSampleCallingCameraDLL
         [ComImport]
         [Guid("DE5072EE-DBE3-46DC-8A87-B6F631194751")]
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [ComVisible(true)]
         private interface IMFSensorActivitiesReportCallback
         {
             HRESULT OnActivitiesReport(IMFSensorActivitiesReport sensorActivitiesReport);
@@ -88,6 +91,7 @@ namespace UWPAPPSampleCallingCameraDLL
         [ComImport]
         [Guid("683F7A5E-4A19-43CD-B1A9-DBF4AB3F7777")]
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [ComVisible(true)]
         private interface IMFSensorActivitiesReport
         {
             HRESULT GetCount(out uint pcCount);
@@ -101,6 +105,7 @@ namespace UWPAPPSampleCallingCameraDLL
         [ComImport]
         [Guid("3E8C4BE1-A8C2-4528-90DE-2851BDE5FEAD")]
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [ComVisible(true)]
         private interface IMFSensorActivityReport
         {
             HRESULT GetFriendlyName([MarshalAs(UnmanagedType.LPWStr)] string FriendlyName, uint cchFriendlyName, out uint pcchWritten);
@@ -116,6 +121,7 @@ namespace UWPAPPSampleCallingCameraDLL
         [ComImport]
         [Guid("39DC7F4A-B141-4719-813C-A7F46162A2B8")]
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [ComVisible(true)]
         private interface IMFSensorProcessActivity
         {
             HRESULT GetProcessId(out uint pPID);
